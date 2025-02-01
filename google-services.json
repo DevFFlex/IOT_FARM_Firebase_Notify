@@ -1,0 +1,83 @@
+{
+  "project_info": {
+    "project_number": "612334927935",
+    "firebase_url": "https://plantix-e6ae9-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "plantix-e6ae9",
+    "storage_bucket": "plantix-e6ae9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612334927935:android:5f418ff9ff76cfc818f88a",
+        "android_client_info": {
+          "package_name": "com.example.plantix"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "612334927935-ot3dthote7p9jai5jum668tv31lqlq79.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1S2uSGPeFvaaaCK_C3EECqJ9xClog0Ho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "612334927935-ot3dthote7p9jai5jum668tv31lqlq79.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "612334927935-6q88beemm01vhj17d8kbq6k5gcc60eql.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.plantix"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612334927935:android:be9bbe572be8e27718f88a",
+        "android_client_info": {
+          "package_name": "com.example.snp_plantix"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "612334927935-ot3dthote7p9jai5jum668tv31lqlq79.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1S2uSGPeFvaaaCK_C3EECqJ9xClog0Ho"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "612334927935-ot3dthote7p9jai5jum668tv31lqlq79.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "612334927935-6q88beemm01vhj17d8kbq6k5gcc60eql.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.plantix"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

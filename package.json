@@ -1,0 +1,15 @@
+{
+  "name": "nodejs_notify",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "uuid": "^11.0.5"
+  }
+}
