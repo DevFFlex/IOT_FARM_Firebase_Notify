@@ -3,6 +3,9 @@ const admin = require('firebase-admin');
 const serviceAccount = require('./serviceKey.json');
 const datetime_lib = require('./it_datetime');
 
+
+const DEBUG_LOG = false
+
 let userToken = '';
 
 const COLLECTION_NAME = 'notification-history'
@@ -18,6 +21,7 @@ const dbFireStore = admin.firestore();
 
 const sensorsRef = database.ref('sensors');
 const settingRef = database.ref('settings');
+const automaticControlRef = database.ref('AutomaticControl');
 
 const FCM_tokenRef = database.ref('FCM_token'); // path ของ sensors
 
@@ -32,18 +36,16 @@ async function sendNotificationToDevice(dataObject) {
 
     userToken = (await FCM_tokenRef.once('value')).val();
 
-    console.log(`token : ${userToken}`)
 
-    // ส่งข้อความไปยัง device token ที่กำหนด
     admin.messaging().send({
         token: userToken,
         notification: payload.notification
     })
         .then(response => {
-            console.log('Successfully sent message:', response);
+            if (DEBUG_LOG) console.log('Successfully sent message:', response);
         })
         .catch(error => {
-            console.log('Error sending message:', error);
+            if (DEBUG_LOG) console.log('Error sending message:', error);
         });
 }
 
@@ -60,10 +62,10 @@ function insertCollection(dataObject) {
 
     sensorRef.set(dataObject)
         .then(() => {
-            console.log(`Sensor data for ${sensorId} saved successfully!`);
+            if (DEBUG_LOG) console.log(`Sensor data for ${sensorId} saved successfully!`);
         })
         .catch((error) => {
-            console.error('Error saving sensor data:', error);
+            if (DEBUG_LOG) console.error('Error saving sensor data:', error);
         });
 }
 async function deleteCollection(collectionName) {
@@ -72,15 +74,13 @@ async function deleteCollection(collectionName) {
 
     snapshot.forEach(async (doc) => {
         await doc.ref.delete(); // ลบเอกสาร
-        console.log(`Deleted document: ${doc.id}`);
+        if (DEBUG_LOG) console.log(`Deleted document: ${doc.id}`);
     });
 }
 
 
-async function CheckNotiCondition() {
-
+async function CheckSensorSettingCondition(snapshot) {
     try {
-        // ดึงข้อมูลจาก 'sensors' และ 'settings' พร้อมกัน
         const sensorSnapshot = await sensorsRef.once('value');
         const settingSnapshot = await settingRef.once('value');
 
@@ -88,7 +88,7 @@ async function CheckNotiCondition() {
         const settingData = settingSnapshot.val();  // ข้อมูลจาก sensors
 
 
-        if (settingData.isMoistureEnabled) {
+        if (settingData.isMoistureEnabled && snapshot.key == 'soilMoisture') {
             if (sensorData.soilMoisture < settingData.lowerMoistureValue) {
                 const dataObject = {
                     icon: 'humidity.png',
@@ -97,8 +97,8 @@ async function CheckNotiCondition() {
                 };
                 sendNotificationToDevice(dataObject);
                 insertCollection(dataObject);
-                
-            }else if(sensorData.soilMoisture > settingData.upperMoistureValue){
+
+            } else if (sensorData.soilMoisture > settingData.upperMoistureValue) {
                 const dataObject = {
                     icon: 'humidity.png',
                     title: 'เเจ้งเตือนความชื้นในดิน',
@@ -110,7 +110,7 @@ async function CheckNotiCondition() {
         }
 
 
-        if (settingData.isTemperatureEnabled) {
+        if (settingData.isTemperatureEnabled && snapshot.key == 'temperatureDHT') {
             if (sensorData.temperatureDHT < settingData.lowerTemperatureValue) {
                 const dataObject = {
                     icon: 'soil_moisture.png',
@@ -119,8 +119,8 @@ async function CheckNotiCondition() {
                 };
                 sendNotificationToDevice(dataObject);
                 insertCollection(dataObject);
-                
-            }else if(sensorData.temperatureDHT > settingData.upperTemperatureValue){
+
+            } else if (sensorData.temperatureDHT > settingData.upperTemperatureValue) {
                 const dataObject = {
                     icon: 'soil_moisture.png',
                     title: 'เเจ้งเตือนอุณหภูมิในดิน',
@@ -132,7 +132,7 @@ async function CheckNotiCondition() {
         }
 
 
-        if (settingData.isAirHumidityEnabled) {
+        if (settingData.isAirHumidityEnabled && snapshot.key == 'humidity') {
             if (sensorData.humidity < settingData.lowerAirHumidityValue) {
                 const dataObject = {
                     icon: 'rain.png',
@@ -141,8 +141,8 @@ async function CheckNotiCondition() {
                 };
                 sendNotificationToDevice(dataObject);
                 insertCollection(dataObject);
-                
-            }else if(sensorData.humidity > settingData.upperAirHumidityValue){
+
+            } else if (sensorData.humidity > settingData.upperAirHumidityValue) {
                 const dataObject = {
                     icon: 'rain.png',
                     title: 'เเจ้งเตือนความชื้นในอากาศ',
@@ -153,7 +153,7 @@ async function CheckNotiCondition() {
             }
         }
 
-        if (settingData.isAirTemperatureEnabled) {
+        if (settingData.isAirTemperatureEnabled && snapshot.key == 'temperatureDS18B20') {
             if (sensorData.temperatureDS18B20 < settingData.lowerAirTemperatureValue) {
                 const dataObject = {
                     icon: 'low-temperature.png',
@@ -162,8 +162,8 @@ async function CheckNotiCondition() {
                 };
                 sendNotificationToDevice(dataObject);
                 insertCollection(dataObject);
-                
-            }else if(sensorData.temperatureDS18B20 > settingData.upperAirTemperatureValue){
+
+            } else if (sensorData.temperatureDS18B20 > settingData.upperAirTemperatureValue) {
                 const dataObject = {
                     icon: 'low-temperature.png',
                     title: 'เเจ้งเตือนอุณหภูมิในอากาศ',
@@ -174,12 +174,7 @@ async function CheckNotiCondition() {
             }
         }
 
-        
-
-        console.log('Sensor Data:', sensorData);
-        console.log('Setting Data:', settingData);
-
-        
+        console.log(`${datetime_lib.getDate()}  ${datetime_lib.getTime()}\t\tcheck condition `)
     } catch (error) {
         console.error('Error fetching data:', error);
     }
@@ -187,11 +182,41 @@ async function CheckNotiCondition() {
 
 }
 
+async function CheckAutomaticControlCondition(snapshot) {
+    const sensorSnapshot = await sensorsRef.once('value');
+    const automaticControlSnapshot = await automaticControlRef.once('value');
+
+    const sensorData = sensorSnapshot.val(); 
+    const automaticControlData = automaticControlSnapshot.val();
+
+
+    if (snapshot.key == 'soilMoisture' && automaticControlData.isAutomatic) {
+       if(sensorData.soilMoisture < automaticControlData.lowerThreshold){
+        console.log("auto lower")
+       }else if(sensorData.soilMoisture > automaticControlData.upperThreshold){
+        console.log("auto upper")
+       }
+    }
+}
+
 async function main() {
+
     sensorsRef.on('child_changed', (snapshot) => {
         const changedData = snapshot.val();
-        CheckNotiCondition();
+        CheckSensorSettingCondition(snapshot);
+        CheckAutomaticControlCondition(snapshot);
     });
+
+    const automaticControlRef = database.ref('AutomaticControl');
+    automaticControlRef.on('child_changed', (snapshot) => {
+        const changedData = snapshot.val();
+        console.log(`key ${snapshot.key} change to ${changedData}`)
+
+    });
+
+
+
+
     // deleteCollection(COLLECTION_NAME)
 
 }
