@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
+const { GoogleAuth } = require('google-auth-library');
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceKey.json');
+const serviceAccount = require('./serviceKey2.json');
 const datetime_lib = require('./it_datetime');
 
 
@@ -13,7 +14,7 @@ const COLLECTION_AUTOMATIC_CONTROL_HISTORY = 'automatic-control-history'
 
 // Initialize Firebase Admin SDK
 admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert(JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)),
     databaseURL: "https://plantix-e6ae9-default-rtdb.asia-southeast1.firebasedatabase.app/"  // เปลี่ยนเป็น URL ของ Realtime Database ของคุณ
 });
 
