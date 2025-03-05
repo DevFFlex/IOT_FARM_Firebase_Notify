@@ -1,6 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const { GoogleAuth } = require('google-auth-library');
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 // const serviceAccount = require('./serviceKey2.json');
 const datetime_lib = require('./it_datetime');
 
@@ -12,9 +14,12 @@ let userToken = '';
 const COLLECTION_NOTIFY_HISTORY = 'notification-history'
 const COLLECTION_AUTOMATIC_CONTROL_HISTORY = 'automatic-control-history'
 
-// Initialize Firebase Admin SDK
+const filePath = path.join(__dirname, 'serviceKey2.json');
+
+const credentials = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+
 admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON)),
+    credential: admin.credential.cert(credentials),
     databaseURL: "https://plantix-e6ae9-default-rtdb.asia-southeast1.firebasedatabase.app/"  // เปลี่ยนเป็น URL ของ Realtime Database ของคุณ
 });
 
@@ -23,6 +28,7 @@ const dbFireStore = admin.firestore();
 
 const sensorsRef = database.ref('sensors');
 const settingRef = database.ref('settings');
+const automaticControlListRef = database.ref('AutomaticControlList');
 const automaticControlRef = database.ref('AutomaticControl');
 
 const FCM_tokenRef = database.ref('FCM_token'); // path ของ sensors
@@ -52,14 +58,14 @@ async function sendNotificationToDevice(dataObject) {
 }
 
 // if (currentSoilMoisture < lowerThreshold) {
-    //   print("ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ");
-    //   await relayRef.set(true);
-    //   insertAutomaticControl("เปิดนํ้าอัตโนมัติ",getDateNow(),getTimeNow());
-    // } else if (currentSoilMoisture > upperThreshold) {
-    //   print("ความชื้นในดินสูงเกินไป ปิดการรดน้ำ");
-    //   insertAutomaticControl("ปิดนํ้าอัตโนมัติ",getDateNow(),getTimeNow());
-    //   await relayRef.set(false);
-    // }
+//   print("ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ");
+//   await relayRef.set(true);
+//   insertAutomaticControl("เปิดนํ้าอัตโนมัติ",getDateNow(),getTimeNow());
+// } else if (currentSoilMoisture > upperThreshold) {
+//   print("ความชื้นในดินสูงเกินไป ปิดการรดน้ำ");
+//   insertAutomaticControl("ปิดนํ้าอัตโนมัติ",getDateNow(),getTimeNow());
+//   await relayRef.set(false);
+// }
 
 function insertCollectionNotificationHistory(dataObject) {
     const sensorId = uuidv4()
@@ -85,9 +91,9 @@ function insertCollectionAutomaticControlHistory(title) {
     const sensorRef = db.collection(COLLECTION_AUTOMATIC_CONTROL_HISTORY).doc(sensorId);
 
     sensorRef.set({
-        title:title,
-        date:datetime_lib.getDate(),
-        time:datetime_lib.getTime()
+        title: title,
+        date: datetime_lib.getDate(),
+        time: datetime_lib.getTime()
     })
         .then(() => {
             if (DEBUG_LOG) console.log(`Automatic Control data for ${sensorId} saved successfully!`);
@@ -111,10 +117,88 @@ async function CheckSensorSettingCondition(snapshot) {
     try {
         const sensorSnapshot = await sensorsRef.once('value');
         const settingSnapshot = await settingRef.once('value');
+        const automaticControlListSnapshot = await automaticControlListRef.once('value');
+
 
         const sensorData = sensorSnapshot.val();  // ข้อมูลจาก sensors
         const settingData = settingSnapshot.val();  // ข้อมูลจาก sensors
+        const automaticControlList = automaticControlListSnapshot.val();  // ข้อมูลจาก sensors
 
+
+
+        const onAllRelay = () => {
+            const r1Ref = database.ref('relay/relay1');
+            const r2Ref = database.ref('relay/relay2');
+            const r3Ref = database.ref('relay/relay3');
+            console.log('---- on relay')
+            r1Ref.set(true).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+
+            r2Ref.set(true).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+
+            r3Ref.set(true).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+        }
+        const offAllRelay = () => {
+            const r1Ref = database.ref('relay/relay1');
+            const r2Ref = database.ref('relay/relay2');
+            const r3Ref = database.ref('relay/relay3');
+
+            console.log('---- off relay')
+            r1Ref.set(false).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+
+            r2Ref.set(false).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+
+            r3Ref.set(false).then(() => {
+                // console.log('Data saved successfully!');
+            }).catch((error) => {
+                console.error('Error saving data: ', error);
+            });
+        }
+
+
+        for (const key in automaticControlList) {
+            if (automaticControlList.hasOwnProperty(key)) {
+                const farm = automaticControlList[key];
+                // console.log(`Farm Name: ${farm.farm_name}`);
+                // console.log(`Crop Type: ${farm.crop_type}`);
+                // console.log(`Is Automatic: ${farm.isAutomatic}`);
+                // console.log(`Lower Threshold: ${farm.lowerThreshold}`);
+                // console.log(`Upper Threshold: ${farm.upperThreshold}`);
+                // console.log('---------------------------');
+
+                if (farm.isAutomatic) {
+                    if (sensorData.soilMoisture > farm.upperThreshold) {
+                        offAllRelay()
+                    } else if (sensorData.soilMoisture < farm.lowerThreshold) {
+                        onAllRelay();
+                    }
+                }
+            }
+
+
+
+
+
+        }
 
         if (settingData.isMoistureEnabled && snapshot.key == 'soilMoisture') {
             if (sensorData.soilMoisture < settingData.lowerMoistureValue) {
@@ -214,38 +298,38 @@ async function CheckAutomaticControlCondition(snapshot) {
     const sensorSnapshot = await sensorsRef.once('value');
     const automaticControlSnapshot = await automaticControlRef.once('value');
 
-    const sensorData = sensorSnapshot.val(); 
+    const sensorData = sensorSnapshot.val();
     const automaticControlData = automaticControlSnapshot.val();
 
 
     if (snapshot.key == 'soilMoisture' && automaticControlData.isAutomatic) {
-       if(sensorData.soilMoisture < automaticControlData.lowerThreshold){
-        const dataObject = {
-            icon: 'plant.png',
-            title: 'ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ',
-            body: `ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ`,
-        };
-        sendNotificationToDevice(dataObject);
-        insertCollectionNotificationHistory(dataObject);
+        if (sensorData.soilMoisture < automaticControlData.lowerThreshold) {
+            const dataObject = {
+                icon: 'plant.png',
+                title: 'ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ',
+                body: `ความชื้นในดินต่ำเกินไป เปิดการรดน้ำ`,
+            };
+            sendNotificationToDevice(dataObject);
+            insertCollectionNotificationHistory(dataObject);
 
-        insertCollectionAutomaticControlHistory("เปิดนํ้าอัตโนมัติ");
-        
-    }else if(sensorData.soilMoisture > automaticControlData.upperThreshold){
-        const dataObject = {
-            icon: 'plant.png',
-            title: 'ความชื้นในดินสูงเกินไป ปิดการรดน้ำ',
-            body: `ความชื้นในดินสูงเกินไป ปิดการรดน้ำ`,
-        };
-        sendNotificationToDevice(dataObject);
-        insertCollectionNotificationHistory(dataObject);
+            insertCollectionAutomaticControlHistory("เปิดนํ้าอัตโนมัติ");
 
-        insertCollectionAutomaticControlHistory("ปิดนํ้าอัตโนมัติ");
-       }
+        } else if (sensorData.soilMoisture > automaticControlData.upperThreshold) {
+            const dataObject = {
+                icon: 'plant.png',
+                title: 'ความชื้นในดินสูงเกินไป ปิดการรดน้ำ',
+                body: `ความชื้นในดินสูงเกินไป ปิดการรดน้ำ`,
+            };
+            sendNotificationToDevice(dataObject);
+            insertCollectionNotificationHistory(dataObject);
+
+            insertCollectionAutomaticControlHistory("ปิดนํ้าอัตโนมัติ");
+        }
     }
 }
 
 async function main() {
-
+    console.log("start server notification and backend process...");
     sensorsRef.on('child_changed', (snapshot) => {
         const changedData = snapshot.val();
         CheckSensorSettingCondition(snapshot);
