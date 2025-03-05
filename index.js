@@ -14,9 +14,7 @@ let userToken = '';
 const COLLECTION_NOTIFY_HISTORY = 'notification-history'
 const COLLECTION_AUTOMATIC_CONTROL_HISTORY = 'automatic-control-history'
 
-const filePath = path.join(__dirname, 'serviceKey2.json');
-
-const credentials = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+const credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
     credential: admin.credential.cert(credentials),
@@ -30,6 +28,7 @@ const sensorsRef = database.ref('sensors');
 const settingRef = database.ref('settings');
 const automaticControlListRef = database.ref('AutomaticControlList');
 const automaticControlRef = database.ref('AutomaticControl');
+// const relayControlStatusRef = database.ref('relayControlStatus');
 
 const FCM_tokenRef = database.ref('FCM_token'); // path ของ sensors
 
@@ -66,6 +65,55 @@ async function sendNotificationToDevice(dataObject) {
 //   insertAutomaticControl("ปิดนํ้าอัตโนมัติ",getDateNow(),getTimeNow());
 //   await relayRef.set(false);
 // }
+
+const onAllRelay = () => {
+    const r1Ref = database.ref('relay/relay1');
+    const r2Ref = database.ref('relay/relay2');
+    const r3Ref = database.ref('relay/relay3');
+    insertCollectionAutomaticControlHistory("เปิดนํ้าอัตโนมัติ");
+    console.log('---- on relay')
+    r1Ref.set(true).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+
+    r2Ref.set(true).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+
+    r3Ref.set(true).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+}
+const offAllRelay = () => {
+    const r1Ref = database.ref('relay/relay1');
+    const r2Ref = database.ref('relay/relay2');
+    const r3Ref = database.ref('relay/relay3');
+    insertCollectionAutomaticControlHistory("ปิดนํ้าอัตโนมัติ");
+    console.log('---- off relay')
+    r1Ref.set(false).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+
+    r2Ref.set(false).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+
+    r3Ref.set(false).then(() => {
+        // console.log('Data saved successfully!');
+    }).catch((error) => {
+        console.error('Error saving data: ', error);
+    });
+}
 
 function insertCollectionNotificationHistory(dataObject) {
     const sensorId = uuidv4()
@@ -111,7 +159,25 @@ async function deleteCollection(collectionName) {
         if (DEBUG_LOG) console.log(`Deleted document: ${doc.id}`);
     });
 }
-// deleteCollection(COLLECTION_AUTOMATIC_CONTROL_HISTORY)
+
+async function getAutomationList() {
+    return new Promise(async (resolve, reject) => {
+        const automaticControlListSnapshot = await automaticControlListRef.once('value');
+        const automaticControlList = automaticControlListSnapshot.val();  // ข้อมูลจาก sensors
+
+        const list = Object.entries(automaticControlList).map(([key, value]) => ({
+            key, // เพิ่ม key ของแต่ละ item เข้าไปใน object
+            ...value // รวมข้อมูลของ value
+        }));
+
+        resolve(list)
+    })
+}
+
+let bufferList = [];
+getAutomationList().then(data => {
+    bufferList = data;
+})
 
 async function CheckSensorSettingCondition(snapshot) {
     try {
@@ -126,53 +192,10 @@ async function CheckSensorSettingCondition(snapshot) {
 
 
 
-        const onAllRelay = () => {
-            const r1Ref = database.ref('relay/relay1');
-            const r2Ref = database.ref('relay/relay2');
-            const r3Ref = database.ref('relay/relay3');
-            console.log('---- on relay')
-            r1Ref.set(true).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
+        
 
-            r2Ref.set(true).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
 
-            r3Ref.set(true).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
-        }
-        const offAllRelay = () => {
-            const r1Ref = database.ref('relay/relay1');
-            const r2Ref = database.ref('relay/relay2');
-            const r3Ref = database.ref('relay/relay3');
 
-            console.log('---- off relay')
-            r1Ref.set(false).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
-
-            r2Ref.set(false).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
-
-            r3Ref.set(false).then(() => {
-                // console.log('Data saved successfully!');
-            }).catch((error) => {
-                console.error('Error saving data: ', error);
-            });
-        }
 
 
         for (const key in automaticControlList) {
@@ -191,9 +214,17 @@ async function CheckSensorSettingCondition(snapshot) {
                     } else if (sensorData.soilMoisture < farm.lowerThreshold) {
                         onAllRelay();
                     }
+
+                }
+
+
+                const findIndex = bufferList.findIndex(item => item.key === key)
+
+                if (bufferList[findIndex].isAutomatic !== farm.isAutomatic) {
+                    console.log(`${key} not ${farm.isAutomatic}`);
+                    bufferList[findIndex].isAutomatic = farm.isAutomatic
                 }
             }
-
 
 
 
@@ -334,6 +365,16 @@ async function main() {
         const changedData = snapshot.val();
         CheckSensorSettingCondition(snapshot);
         CheckAutomaticControlCondition(snapshot);
+    });
+
+    // ใช้ ref สำหรับติดตามข้อมูลในเส้นทางที่กำหนด
+    const automaticControlListRef = database.ref('AutomaticControlList');  // กำหนดเส้นทางที่ต้องการติดตาม
+    automaticControlListRef.on('child_changed', (snapshot) => {
+        const changedData = snapshot.val();
+        if(!changedData.isAutomatic){
+            offAllRelay();
+        }
+        console.log('ข้อมูลที่เปลี่ยนแปลง:', changedData);
     });
 
     const automaticControlRef = database.ref('AutomaticControl');
